@@ -1,111 +1,165 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { API_URL } from '../lib/constants';
+	import AddressList from '../components/AddressList.svelte';
+	import BMAReport from '../components/BMAReport.svelte';
+	import LLMInstructions from '../components/LLMInstructions.svelte';
 
-	interface Address {
+	let addresses: Array<{
 		id: string;
 		addressStr: string;
 		enabled: boolean;
 		primary: boolean;
-	}
-
-	interface BMAReport {
-		primaryAddress: Address | null;
-		comparisonAddresses: Address[] | null;
-		opinion: string;
-	}
-
-	const API_URL = import.meta.env.VITE_API_URL;
-
-	let addresses: Address[] = [];
-	let bmaReport: BMAReport | null = null;
-	let errorMessage: string = '';
+	}> = [];
+	let bmaReport: {
+		summary: string;
+		detailedAnalysis: {
+			primaryPropertyDetails: {
+				address: string;
+				price: number;
+				bedrooms: number;
+				bathrooms: number;
+				squareFootage: number;
+				yearBuilt: number;
+				propertyType: string;
+				lotSize: string;
+				mlsNumber: string;
+				daysOnMarket: number;
+				lastPriceChange: number;
+				description: string;
+			};
+			comparisonDetails: Array<{
+				address: string;
+				price: number;
+				bedrooms: number;
+				bathrooms: number;
+				squareFootage: number;
+				yearBuilt: number;
+				propertyType: string;
+				lotSize: string;
+				mlsNumber: string;
+				daysOnMarket: number;
+				lastPriceChange: number;
+				description: string;
+			}>;
+			priceAnalysis: string;
+			featureComparison: Array<{
+				feature: string;
+				primaryValue: string;
+				comparison: Array<{
+					address: string;
+					value: string;
+				}>;
+				analysis: string;
+			}>;
+			marketTrends: string;
+			recommendation: string;
+		};
+	} | null = null;
+	let isLoadingBMA = false;
+	let errorMessage = '';
+	let llmInstructions = '';
 
 	async function fetchAddresses() {
 		try {
-			const res = await fetch(`${API_URL}/api/addresses`);
-			const data = await res.json();
-			addresses = data;
+			const response = await fetch(`${API_URL}/api/addresses`);
+			if (!response.ok) {
+				throw new Error(`HTTP error! status: ${response.status}`);
+			}
+			addresses = await response.json();
 		} catch (err) {
-			errorMessage = 'Failed to fetch addresses.';
-		}
-	}
-
-	async function updateAddress(id: string, updated: Partial<Address>) {
-		try {
-			console.log('Updating address:', { id, updated });
-			const response = await fetch(`${API_URL}/api/addresses/${id}`, {
-				method: 'PATCH',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(updated)
-			});
-			console.log('Update response:', response);
-			await fetchAddresses();
-			await fetchBMAReport();
-		} catch (err) {
-			console.error('Error updating address:', err);
-			errorMessage = 'Failed to update address.';
+			console.error('Error fetching addresses:', err);
 		}
 	}
 
 	async function fetchBMAReport() {
+		isLoadingBMA = true;
+		errorMessage = '';
+		
 		try {
-			const res = await fetch(`${API_URL}/api/bma-report`);
-			bmaReport = await res.json();
+			const response = await fetch(`${API_URL}/api/bma-report`);
+			if (!response.ok) {
+				throw new Error(`HTTP error! status: ${response.status}`);
+			}
+			bmaReport = await response.json();
 		} catch (err) {
-			errorMessage = 'Failed to fetch BMA report.';
+			console.error('Error fetching BMA report:', err);
+			errorMessage = 'Failed to fetch BMA report. Please try again.';
+		} finally {
+			isLoadingBMA = false;
 		}
+	}
+
+	async function fetchLLMInstructions() {
+		try {
+			const response = await fetch(`${API_URL}/api/llm-instructions`);
+			if (!response.ok) {
+				throw new Error(`HTTP error! status: ${response.status}`);
+			}
+			const data = await response.json();
+			llmInstructions = data.instructions || '';
+		} catch (err) {
+			console.error('Error fetching LLM instructions:', err);
+		}
+	}
+
+	async function handleInstructionsUpdate() {
+		await fetchLLMInstructions();
+		await fetchBMAReport();
 	}
 
 	onMount(async () => {
 		await fetchAddresses();
+		await fetchLLMInstructions();
 		await fetchBMAReport();
 	});
 </script>
 
-<div>
-	<h1>BMA Addresses</h1>
-	{#if errorMessage}
-		<p style="color: red">{errorMessage}</p>
-	{/if}
+<main>
+	<header>
+		<h1>BMA Calculator</h1>
+	</header>
+	
+	<AddressList 
+		addresses={addresses} 
+		onUpdate={fetchAddresses} 
+	/>
+	
+	<LLMInstructions 
+		instructions={llmInstructions} 
+		onUpdate={handleInstructionsUpdate} 
+	/>
+	
+	<BMAReport 
+		bmaReport={bmaReport} 
+		isLoadingBMA={isLoadingBMA} 
+		errorMessage={errorMessage} 
+	/>
+</main>
 
-	{#each addresses as addr}
-		<div style="margin-bottom: 8px; border: 1px solid #ccc; padding: 8px">
-			<p><strong>{addr.addressStr}</strong></p>
-			<label>
-				<input
-					type="checkbox"
-					checked={addr.enabled}
-					on:change={() => updateAddress(addr.id, { enabled: !addr.enabled })}
-				/>
-				Enabled
-			</label>
-			<label style="margin-left: 10px;">
-				<input
-					type="radio"
-					name="primary"
-					checked={addr.primary}
-					on:change={() => updateAddress(addr.id, { primary: true })}
-				/>
-				Set as Primary
-			</label>
-		</div>
-	{/each}
+<style>
+	@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
 
-	<h2>BMA Report</h2>
-	{#if bmaReport}
-		{#if bmaReport.primaryAddress && bmaReport.comparisonAddresses?.length > 0}
-			<p><strong>Primary Address:</strong> {bmaReport.primaryAddress.addressStr}</p>
-			<p><strong>Comparison Addresses:</strong></p>
-			<ul>
-				{#each bmaReport.comparisonAddresses as cAddr}
-					<li>{cAddr.addressStr}</li>
-				{/each}
-			</ul>
-			<div style="white-space: pre-line; margin-top: 10px;">
-				{bmaReport.opinion}
-			</div>
-		{:else}
-			<p>{bmaReport.opinion}</p>
-		{/if}
-	{/if}
-</div>
+	main {
+		max-width: 800px;
+		margin: 0 auto;
+		padding: 20px;
+		font-family: 'Roboto', sans-serif;
+	}
+
+	header {
+		background: #2c3e50;
+		padding: 20px;
+		margin: -20px -20px 20px -20px;
+		border-radius: 4px 4px 0 0;
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+	}
+
+	h1 {
+		margin: 0;
+		color: white;
+		font-weight: 500;
+		font-size: 1.8em;
+		letter-spacing: 0.5px;
+	}
+</style>

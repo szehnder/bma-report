@@ -13,6 +13,9 @@ import (
 
 var dbClient *mongo.Client
 var BmaDB *mongo.Database
+var addressesCollection *mongo.Collection
+var cachedBMAReportsCollection *mongo.Collection
+var llmInstructionsCollection *mongo.Collection
 
 func ConnectDB() error {
 	var err error
@@ -44,6 +47,10 @@ func ConnectDB() error {
 		return fmt.Errorf("failed to initialize collections: %v", err)
 	}
 
+	addressesCollection = BmaDB.Collection("addresses")
+	cachedBMAReportsCollection = BmaDB.Collection("cached_bma_reports")
+	llmInstructionsCollection = BmaDB.Collection("llm_instructions")
+
 	return nil
 }
 
@@ -72,6 +79,19 @@ func initCollections() error {
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create index on addresses: %v", err)
+	}
+
+	// Initialize cached_bma_reports collection
+	cachedCol := BmaDB.Collection("cached_bma_reports")
+	_, err = cachedCol.Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys: bson.D{
+			{Key: "primaryAddressId", Value: 1},
+			{Key: "comparisonAddressIds", Value: 1},
+		},
+		Options: options.Index().SetUnique(true),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create index on cached_bma_reports: %v", err)
 	}
 
 	return nil
