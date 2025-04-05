@@ -1,0 +1,19 @@
+{
+    "name": "bma-frontend",
+    "version": "1.0.0",
+    "scripts": {
+        "dev": "vite dev",
+        "build": "vite build",
+        "preview": "vite preview",
+        "start": "node build"
+    },
+    "devDependencies": {
+        "@sveltejs/adapter-node": "^5.2.12",
+        "@sveltejs/kit": "^2.5.0",
+        "concurrently": "^8.2.2",
+        "svelte": "^5.0.0",
+        "typescript": "^5.3.3",
+        "vite": "^6.0.0"
+    },
+    "type": "module"
+}
