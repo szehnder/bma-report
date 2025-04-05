@@ -43,6 +43,7 @@ This application automates the BMA process by:
 - Node.js 18 or later
 - MongoDB
 - Chrome browser
+- Docker and Docker Compose (optional, for containerized setup)
 
 ### Environment Variables
 
@@ -66,6 +67,10 @@ export GEMINI_API_KEY="your_gemini_api_key"
 
 ### Installation
 
+You can set up the application in two ways:
+
+#### Option 1: Manual Setup
+
 1. **Backend Setup**
    ```bash
    cd pkg/backend
@@ -85,6 +90,29 @@ export GEMINI_API_KEY="your_gemini_api_key"
    - Enable "Developer mode"
    - Click "Load unpacked"
    - Select the `extension` directory
+
+#### Option 2: Docker Compose Setup
+
+For a simpler local development setup, you can use Docker Compose to run the entire stack:
+
+```bash
+# Start all services
+docker-compose up
+
+# Stop all services
+docker-compose down
+```
+
+This will start:
+- MongoDB container
+- Backend API server
+- Frontend development server
+
+The application will be available at:
+- Frontend: http://localhost:5173
+- Backend API: http://localhost:8080
+
+Note: You'll still need to install the Chrome extension manually as described above.
 
 ### Usage
 
